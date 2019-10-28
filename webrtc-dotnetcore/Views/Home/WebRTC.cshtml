@@ -1,0 +1,75 @@
+﻿@{
+    ViewData["Title"] = "WebRTC";
+}
+
+@section StyleSheets{
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css" type="text/css" />
+    <link rel="stylesheet" href="~/css/webrtc.css" type="text/css" />
+}
+<h1>Realtime communication with WebRTC</h1>
+<button id="testButton">test</button>
+
+<table id="table_id" class="display">
+    <thead>
+        <tr>
+            <th id="RoomID">RoomID</th>
+            <th id="Owner">Owner</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Row 1 Data 1</td>
+            <td>Row 1 Data 2</td>
+        </tr>
+        <tr>
+            <td>Row 2 Data 1</td>
+            <td>Row 2 Data 2</td>
+        </tr>
+    </tbody>
+</table>
+
+<div id="videoCanvas">
+    <video id="camera" autoplay playsinline></video>
+    <canvas id="photo"></canvas>
+</div>
+
+<div id="buttons">
+    <button id="snap">Snap</button><span> then </span><button id="send">Send</button>
+    <span> or </span>
+    <button id="snapAndSend">Snap &amp; Send</button>
+</div>
+
+<div id="incoming">
+    <h2>Incoming photos</h2>
+    <div id="trail"></div>
+</div>
+
+@section Scripts{
+    <script type="text/javascript" src="~/lib/signalr/dist/browser/signalr.js"></script>
+    <script type="text/javascript" src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="~/js/webrtc.js"></script>
+    <script>
+
+        var table;
+
+        $(document).ready(function () {
+            table = $('#table_id').DataTable({
+                ajax: {
+                    url: '/Home/GetRoomData/',
+                    dataSrc: 'data'
+                },
+                columns: [
+                    { data: 'roomID' },
+                    { data: 'owner' }
+                ]
+            });
+        });
+
+        $('#testButton').click(function () {
+            table.ajax.reload();
+        });
+
+
+    </script>
+}

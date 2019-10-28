@@ -56,7 +56,7 @@ namespace webrtc_dotnetcore
 
             app.UseSignalR(routes =>
             {
-                //routes.MapHub<WebRTCHub>("/webRTCHub");
+                routes.MapHub<Hubs.WebRTCHub>("/WebRTCHub");
             });
 
             app.UseMvc(routes =>
