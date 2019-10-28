@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -39,6 +40,23 @@ namespace webrtc_dotnetcore.Hubs
             }
         }
 
+        public async Task ReloadRoom(int count)
+        {
+            var hoge2 = new List<RoomDataModel>();
+            for (int i = 1; i <= count; i++)
+            {
+                hoge2.Add(new RoomDataModel
+                {
+                    RoomID = i.ToString(),
+                    Owner = "owner" + i.ToString(),
+                    Button = "<button>Click!</button>"
+                });
+            }
+            
+            var json = JsonConvert.SerializeObject(hoge2);
+            await Clients.Caller.SendAsync("updateRoom", json);
+        }
+
         public async Task message(object message)
         {
             try
@@ -72,5 +90,12 @@ namespace webrtc_dotnetcore.Hubs
             Clients.AllExcept(Context.ConnectionId).SendAsync("bye");
             return base.OnDisconnectedAsync(exception);
         }
+    }
+
+    public class RoomDataModel
+    {
+        public string RoomID { get; set; }
+        public string Owner { get; set; }
+        public string Button { get; set; }
     }
 }

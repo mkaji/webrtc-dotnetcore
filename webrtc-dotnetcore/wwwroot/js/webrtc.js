@@ -14,6 +14,8 @@ var connection = new signalR.HubConnectionBuilder().withUrl("/WebRTCHub").build(
 
 var configuration = null;
 
+var roomTable = $('#roomTable');
+
 // var roomURL = document.getElementById('url');
 var video = document.querySelector('video');
 var photo = document.getElementById('photo');
@@ -47,10 +49,34 @@ if (!room) {
 * Signaling server
 ****************************************************************************/
 
+$('#testButton').click(function () {
+    var dataNum = parseInt($('#dataNum').val());
+    connection.invoke("ReloadRoom", dataNum).catch(function (err) {
+        return console.error(err.toString());
+    });
+});
+
+$('#roomTable tbody').on('click', 'button', function () {
+    var data = roomTable.DataTable().row($(this).parents('tr')).data();
+    alert(data.RoomID + " : " + data.Owner);
+});
+
 // Connect to the signaling server
 //var socket = io.connect();
 
 connection.start().then(function () {
+
+    connection.on('updateRoom', function (data) {
+        var obj = JSON.parse(data);
+        //roomTable.DataTable({
+        //    data: obj,
+        //    columns: [
+        //        { data: 'RoomID' },
+        //        { data: 'Owner' }
+        //    ]
+        //});
+        roomTable.DataTable().clear().rows.add(obj).draw();
+    });
 
     connection.on('ipaddr', function (ipaddr) {
         console.log('Server IP address is: ' + ipaddr);

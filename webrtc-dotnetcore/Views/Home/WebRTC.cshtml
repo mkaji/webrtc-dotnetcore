@@ -7,23 +7,27 @@
     <link rel="stylesheet" href="~/css/webrtc.css" type="text/css" />
 }
 <h1>Realtime communication with WebRTC</h1>
+<input id="dataNum" value="1" />
 <button id="testButton">test</button>
 
-<table id="table_id" class="display">
+<table id="roomTable" class="display" style="width:100%">
     <thead>
         <tr>
-            <th id="RoomID">RoomID</th>
-            <th id="Owner">Owner</th>
+            <th>RoomID</th>
+            <th>Owner</th>
+            <th></th>
         </tr>
     </thead>
     <tbody>
         <tr>
             <td>Row 1 Data 1</td>
             <td>Row 1 Data 2</td>
+            <td></td>
         </tr>
         <tr>
             <td>Row 2 Data 1</td>
             <td>Row 2 Data 2</td>
+            <td></td>
         </tr>
     </tbody>
 </table>
@@ -51,25 +55,21 @@
     <script type="text/javascript" src="~/js/webrtc.js"></script>
     <script>
 
-        var table;
-
         $(document).ready(function () {
-            table = $('#table_id').DataTable({
-                ajax: {
-                    url: '/Home/GetRoomData/',
-                    dataSrc: 'data'
-                },
+            $('#roomTable').DataTable({
                 columns: [
-                    { data: 'roomID' },
-                    { data: 'owner' }
-                ]
+                    { data: 'RoomID' },
+                    { data: 'Owner' },
+                    { data: 'Button' }
+                ],
+                "language": {
+                    "emptyTable": "No room available"
+                }
             });
         });
 
-        $('#testButton').click(function () {
-            table.ajax.reload();
-        });
-
-
+            //$('#testButton').click(function () {
+            //    table.ajax.reload();
+            //});
     </script>
 }
