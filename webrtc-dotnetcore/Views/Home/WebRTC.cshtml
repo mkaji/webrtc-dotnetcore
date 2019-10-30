@@ -6,46 +6,48 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css" type="text/css" />
     <link rel="stylesheet" href="~/css/webrtc.css" type="text/css" />
 }
-<h1>Realtime communication with WebRTC</h1>
+
 <input id="dataNum" value="1" />
 <button id="testButton">test</button>
 
-<table id="roomTable" class="display" style="width:100%">
-    <thead>
-        <tr>
-            <th>RoomID</th>
-            <th>Owner</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>Row 1 Data 1</td>
-            <td>Row 1 Data 2</td>
-            <td></td>
-        </tr>
-        <tr>
-            <td>Row 2 Data 1</td>
-            <td>Row 2 Data 2</td>
-            <td></td>
-        </tr>
-    </tbody>
-</table>
-
-<div id="videoCanvas">
-    <video id="camera" autoplay playsinline></video>
-    <canvas id="photo"></canvas>
+<h3>Create your room</h3>
+<div style="margin: 1em 0">
+    <label for="name">Name:</label>
+    <input type="text" id="name" />
+    <button id="createBtn">Create</button>
 </div>
 
-<div id="buttons">
-    <button id="snap">Snap</button><span> then </span><button id="send">Send</button>
-    <span> or </span>
-    <button id="snapAndSend">Snap &amp; Send</button>
+<h3>Available room list</h3>
+<div style="margin: 1em 0">
+    <table id="roomTable" class="display" style="width:100%">
+        <thead>
+            <tr>
+                <th>Room ID</th>
+                <th>Owner</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
 </div>
 
-<div id="incoming">
-    <h2>Incoming photos</h2>
-    <div id="trail"></div>
+<div style="margin: 1em 0">
+    <div id="videoCanvas">
+        <video id="camera" autoplay playsinline></video>
+        <canvas id="photo"></canvas>
+    </div>
+
+    <div id="buttons">
+        <button id="snap">Snap</button><span> then </span><button id="send">Send</button>
+        <span> or </span>
+        <button id="snapAndSend">Snap &amp; Send</button>
+    </div>
+
+    <div id="incoming">
+        <h2>Incoming photos</h2>
+        <div id="trail"></div>
+    </div>
 </div>
 
 @section Scripts{
@@ -54,22 +56,19 @@
     <script type="text/javascript" src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
     <script type="text/javascript" src="~/js/webrtc.js"></script>
     <script>
-
         $(document).ready(function () {
             $('#roomTable').DataTable({
                 columns: [
-                    { data: 'RoomID' },
-                    { data: 'Owner' },
-                    { data: 'Button' }
+                    { data: 'RoomId', "width": "30%" },
+                    { data: 'Name', "width": "50%" },
+                    { data: 'Button', "width": "15%" }
                 ],
+                "lengthChange": false,
+                "searching": false,
                 "language": {
                     "emptyTable": "No room available"
                 }
             });
         });
-
-            //$('#testButton').click(function () {
-            //    table.ajax.reload();
-            //});
     </script>
 }

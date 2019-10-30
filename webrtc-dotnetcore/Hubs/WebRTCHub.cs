@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -10,54 +11,55 @@ namespace webrtc_dotnetcore.Hubs
 {
     public class WebRTCHub : Hub
     {
-        //https://docs.microsoft.com/en-us/aspnet/core/signalr/groups?view=aspnetcore-3.0
+        private static RoomManager roomManager = new RoomManager();
 
-        private static int clientCount = 0;
-
-        public async Task CreateOrJoin(string room)
+        public override Task OnConnectedAsync()
         {
-            Debug.WriteLine("Received request to create or join room " + room);
-            Debug.WriteLine("Room now has " + clientCount + " client(s)");
+            return base.OnConnectedAsync();
+        }
 
-            if (clientCount == 1)
+        public override Task OnDisconnectedAsync(Exception exception)
+        {
+            roomManager.DeleteRoom(Context.ConnectionId);
+            _ = NotifyRoomInfoAsync(false);
+            return base.OnDisconnectedAsync(exception);
+        }
+
+        public async Task CreateRoom(string name)
+        {
+            RoomInfo roomInfo = roomManager.CreateRoom(Context.ConnectionId, name);
+            if (roomInfo != null)
             {
-                await Groups.AddToGroupAsync(Context.ConnectionId, room);
-                Debug.WriteLine("Client ID " + Context.ConnectionId + " created room " + room);
-                await Clients.Caller.SendAsync("created", room, Context.ConnectionId);
-            }
-            else if (clientCount == 2)
-            {
-                Debug.WriteLine("Client ID " + Context.ConnectionId + " joined room " + room);
-                //await Clients.Group(room).SendAsync("join", room);
-                await Groups.AddToGroupAsync(Context.ConnectionId, room);
-                await Clients.Caller.SendAsync("joined", room, Context.ConnectionId);
-                await Clients.Group(room).SendAsync("ready");
+                await Groups.AddToGroupAsync(Context.ConnectionId, roomInfo.RoomId);
+                await Clients.Caller.SendAsync("created", roomInfo.RoomId);
+                await NotifyRoomInfoAsync(false);
             }
             else
             {
-                Debug.WriteLine("full");
-                await Clients.Caller.SendAsync("full", room);
+                await Clients.Caller.SendAsync("error", "error occurred when creating a new room.");
             }
         }
 
-        public async Task ReloadRoom(int count)
+        public async Task Join(string roomId)
         {
-            var hoge2 = new List<RoomDataModel>();
-            for (int i = 1; i <= count; i++)
+            await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
+            await Clients.Caller.SendAsync("joined", roomId);
+            await Clients.Group(roomId).SendAsync("ready");
+
+            //remove the room from available room list.
+            if (int.TryParse(roomId, out int id))
             {
-                hoge2.Add(new RoomDataModel
-                {
-                    RoomID = i.ToString(),
-                    Owner = "owner" + i.ToString(),
-                    Button = "<button>Click!</button>"
-                });
+                roomManager.DeleteRoom(id);
+                await NotifyRoomInfoAsync(false);
             }
-            
-            var json = JsonConvert.SerializeObject(hoge2);
-            await Clients.Caller.SendAsync("updateRoom", json);
         }
 
-        public async Task message(object message)
+        public async Task GetRoomInfo()
+        {
+            await NotifyRoomInfoAsync(true);
+        }
+
+        public async Task SendMessage(string roomId, object message)
         {
             try
             {
@@ -67,35 +69,102 @@ namespace webrtc_dotnetcore.Hubs
             {
                 Debug.WriteLine(ex.Message);
             }
-            await Clients.AllExcept(Context.ConnectionId).SendAsync("message", message);
+            await Clients.GroupExcept(roomId, Context.ConnectionId).SendAsync("message", message);
         }
 
-        //public async Task ipaddr(string room)
-        //{
-        //    Debug.WriteLine("ipaddr");
-
-        //}
-
-        public override Task OnConnectedAsync()
+        public async Task NotifyRoomInfoAsync(bool notifyOnlyCaller)
         {
-            Debug.WriteLine("OnConnectedAsync");
-            clientCount++;
-            return base.OnConnectedAsync();
-        }
+            List<RoomInfo> roomInfos = roomManager.GetAllRoomInfo();
+            var list = from room in roomInfos
+                       select new
+                       {
+                           RoomId = room.RoomId,
+                           Name = room.Name,
+                           Button = "<button style=\"width: 100%\">Join!</button>"
+                       };
+            var data = JsonConvert.SerializeObject(list);
 
-        public override Task OnDisconnectedAsync(Exception exception)
-        {
-            Debug.WriteLine("OnDisconnectedAsync");
-            clientCount--;
-            Clients.AllExcept(Context.ConnectionId).SendAsync("bye");
-            return base.OnDisconnectedAsync(exception);
+            if (notifyOnlyCaller)
+            {
+                await Clients.Caller.SendAsync("updateRoom", data);
+            }
+            else
+            {
+                await Clients.All.SendAsync("updateRoom", data);
+            }
         }
     }
 
-    public class RoomDataModel
+    /// <summary>
+    /// Room management for WebRTCHub
+    /// </summary>
+    public class RoomManager
     {
-        public string RoomID { get; set; }
-        public string Owner { get; set; }
-        public string Button { get; set; }
+        private int nextRoomId;
+        private ConcurrentDictionary<int, RoomInfo> rooms;
+
+        public RoomManager()
+        {
+            nextRoomId = 1;
+            rooms = new ConcurrentDictionary<int, RoomInfo>();
+        }
+
+        public RoomInfo CreateRoom(string connectionId, string name)
+        {
+            rooms.TryRemove(nextRoomId, out _);
+
+            //create new room info
+            var roomInfo = new RoomInfo
+            {
+                RoomId = nextRoomId.ToString(),
+                Name = name,
+                HostConnectionId = connectionId
+            };
+            bool result = rooms.TryAdd(nextRoomId, roomInfo);
+
+            if (result)
+            {
+                nextRoomId++;
+                return roomInfo;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        public void DeleteRoom(int roomId)
+        {
+            rooms.TryRemove(roomId, out _);
+        }
+
+        public void DeleteRoom(string connectionId)
+        {
+            int? correspondingRoomId = null;
+            foreach (var pair in rooms)
+            {
+                if (pair.Value.HostConnectionId.Equals(connectionId))
+                {
+                    correspondingRoomId = pair.Key;
+                }
+            }
+
+            if (correspondingRoomId.HasValue)
+            {
+                rooms.TryRemove(correspondingRoomId.Value, out _);
+            }
+        }
+
+        public List<RoomInfo> GetAllRoomInfo()
+        {
+            return rooms.Values.ToList();
+        }
+    }
+
+    public class RoomInfo
+    {
+        public string RoomId { get; set; }
+        public string Name { get; set; }
+        public string HostConnectionId { get; set; }
     }
 }

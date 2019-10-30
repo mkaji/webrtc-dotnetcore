@@ -13,10 +13,8 @@ var connection = new signalR.HubConnectionBuilder().withUrl("/WebRTCHub").build(
 // };
 
 var configuration = null;
+var myRoomId;
 
-var roomTable = $('#roomTable');
-
-// var roomURL = document.getElementById('url');
 var video = document.querySelector('video');
 var photo = document.getElementById('photo');
 var photoContext = photo.getContext('2d');
@@ -37,69 +35,36 @@ snapAndSendBtn.addEventListener('click', snapAndSend);
 sendBtn.disabled = true;
 snapAndSendBtn.disabled = true;
 
-// Create a random room if not already present in the URL.
 var isInitiator;
-var room = window.location.hash.substring(1);
-if (!room) {
-    room = window.location.hash = randomToken();
-}
-
 
 /****************************************************************************
 * Signaling server
 ****************************************************************************/
 
-$('#testButton').click(function () {
-    var dataNum = parseInt($('#dataNum').val());
-    connection.invoke("ReloadRoom", dataNum).catch(function (err) {
-        return console.error(err.toString());
-    });
-});
-
-$('#roomTable tbody').on('click', 'button', function () {
-    var data = roomTable.DataTable().row($(this).parents('tr')).data();
-    alert(data.RoomID + " : " + data.Owner);
-});
-
 // Connect to the signaling server
-//var socket = io.connect();
-
 connection.start().then(function () {
 
     connection.on('updateRoom', function (data) {
-        var obj = JSON.parse(data);
-        //roomTable.DataTable({
-        //    data: obj,
-        //    columns: [
-        //        { data: 'RoomID' },
-        //        { data: 'Owner' }
-        //    ]
-        //});
-        roomTable.DataTable().clear().rows.add(obj).draw();
+        updateRoom(data);
     });
 
-    connection.on('ipaddr', function (ipaddr) {
-        console.log('Server IP address is: ' + ipaddr);
-        // updateRoomURL(ipaddr);
-    });
-
-    connection.on('created', function (room, clientId) {
-        console.log('Created room', room, '- my client ID is', clientId);
+    connection.on('created', function (roomId) {
+        console.log('Created room', roomId);
+        myRoomId = roomId;
         isInitiator = true;
         grabWebCamVideo();
     });
 
-    connection.on('joined', function (room, clientId) {
-        console.log('This peer has joined room', room, 'with client ID', clientId);
+    connection.on('joined', function (roomId) {
+        console.log('This peer has joined room', roomId);
+        myRoomId = roomId;
         isInitiator = false;
         createPeerConnection(isInitiator, configuration);
         grabWebCamVideo();
     });
 
-    connection.on('full', function (room) {
-        alert('Room ' + room + ' is full. We will create a new room for you.');
-        window.location.hash = '';
-        window.location.reload();
+    connection.on('error', function (message) {
+        alert(message);
     });
 
     connection.on('ready', function () {
@@ -116,9 +81,8 @@ connection.start().then(function () {
         signalingMessageCallback(message);
     });
 
-    // Joining a room.
-    //socket.emit('create or join', room);
-    connection.invoke("CreateOrJoin", room).catch(function (err) {
+    //Get room list.
+    connection.invoke("GetRoomInfo").catch(function (err) {
         return console.error(err.toString());
     });
 
@@ -148,24 +112,10 @@ connection.start().then(function () {
 
     window.addEventListener('unload', function () {
         console.log(`Unloading window. Notifying peers in ${room}.`);
-        //socket.emit('bye', room);
         connection.invoke("bye", room).catch(function (err) {
             return console.error(err.toString());
         });
     });
-
-    /**
-    * Updates URL on the page so that users can copy&paste it to their peers.
-    */
-    // function updateRoomURL(ipaddr) {
-    //   var url;
-    //   if (!ipaddr) {
-    //     url = location.href;
-    //   } else {
-    //     url = location.protocol + '//' + ipaddr + ':2013/#' + room;
-    //   }
-    //   roomURL.innerHTML = url;
-    // }
 
 }).catch(function (err) {
     return console.error(err.toString());
@@ -176,10 +126,40 @@ connection.start().then(function () {
 */
 function sendMessage(message) {
     console.log('Client sending message: ', message);
-    //socket.emit('message', message);
-    connection.invoke("message", message).catch(function (err) {
+    connection.invoke("SendMessage", myRoomId, message).catch(function (err) {
         return console.error(err.toString());
     });
+}
+
+/****************************************************************************
+* Room management
+****************************************************************************/
+
+$('#createBtn').click(function () {
+    var name = $('#name').val();
+    connection.invoke("CreateRoom", name).catch(function (err) {
+        return console.error(err.toString());
+    });
+});
+
+
+$('#testButton').click(function () {
+    var dataNum = parseInt($('#dataNum').val());
+    connection.invoke("ReloadRoom", dataNum).catch(function (err) {
+        return console.error(err.toString());
+    });
+});
+
+$('#roomTable tbody').on('click', 'button', function () {
+    var data = $('#roomTable').DataTable().row($(this).parents('tr')).data();
+    connection.invoke("Join", data.RoomId).catch(function (err) {
+        return console.error(err.toString());
+    });
+});
+
+function updateRoom(data) {
+    var obj = JSON.parse(data);
+    $('#roomTable').DataTable().clear().rows.add(obj).draw();
 }
 
 /****************************************************************************
@@ -296,9 +276,8 @@ function onDataChannelCreated(channel) {
         snapAndSendBtn.disabled = true;
     }
 
-    channel.onmessage = receiveDataChromeFactory();
-    //channel.onmessage = (adapter.browserDetails.browser === 'firefox') ?
-    //    receiveDataFirefoxFactory() : receiveDataChromeFactory();
+    channel.onmessage = (adapter.browserDetails.browser === 'firefox') ?
+        receiveDataFirefoxFactory() : receiveDataChromeFactory();
 }
 
 function receiveDataChromeFactory() {
@@ -440,10 +419,6 @@ function hide() {
     Array.prototype.forEach.call(arguments, function (elem) {
         elem.style.display = 'none';
     });
-}
-
-function randomToken() {
-    return Math.floor((1 + Math.random()) * 1e16).toString(16).substring(1);
 }
 
 function logError(err) {
