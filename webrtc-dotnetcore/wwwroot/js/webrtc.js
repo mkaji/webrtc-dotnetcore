@@ -50,6 +50,9 @@ connection.start().then(function () {
 
     connection.on('created', function (roomId) {
         console.log('Created room', roomId);
+        $('#name').prop("disabled", true);
+        $('#createBtn').prop("disabled", true);
+        $('#connectionStatus').text('You created Room ' + roomId + '. Waiting for participants...');
         myRoomId = roomId;
         isInitiator = true;
         grabWebCamVideo();
@@ -69,6 +72,9 @@ connection.start().then(function () {
 
     connection.on('ready', function () {
         console.log('Socket is ready');
+        $('#name').prop("disabled", true);
+        $('#createBtn').prop("disabled", true);
+        $('#connectionStatus').text('Connecting...');
         createPeerConnection(isInitiator, configuration);
     });
 
@@ -151,10 +157,15 @@ $('#testButton').click(function () {
 });
 
 $('#roomTable tbody').on('click', 'button', function () {
-    var data = $('#roomTable').DataTable().row($(this).parents('tr')).data();
-    connection.invoke("Join", data.RoomId).catch(function (err) {
-        return console.error(err.toString());
-    });
+    if ($('#connectionStatus').text()) {
+        alert('You already joined the room. Please use a new tab or window.');
+    }
+    else {
+        var data = $('#roomTable').DataTable().row($(this).parents('tr')).data();
+        connection.invoke("Join", data.RoomId).catch(function (err) {
+            return console.error(err.toString());
+        });
+    }
 });
 
 function updateRoom(data) {
@@ -266,6 +277,7 @@ function onDataChannelCreated(channel) {
 
     channel.onopen = function () {
         console.log('CHANNEL opened!!!');
+        $('#connectionStatus').text('Channel opened!!');
         sendBtn.disabled = false;
         snapAndSendBtn.disabled = false;
     };
