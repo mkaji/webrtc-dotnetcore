@@ -13,9 +13,15 @@ var connection = new signalR.HubConnectionBuilder().withUrl("/WebRTCHub").build(
 // };
 
 var configuration = null;
+var peerConn = new RTCPeerConnection(configuration);
 var myRoomId;
 
-var video = document.querySelector('video');
+const localVideo = document.getElementById('localVideo');
+const remoteVideo = document.getElementById('remoteVideo');
+var localStream;
+var remoteStream;
+
+//var video = document.querySelector('video');
 var photo = document.getElementById('photo');
 var photoContext = photo.getContext('2d');
 var trail = document.getElementById('trail');
@@ -37,6 +43,9 @@ snapAndSendBtn.disabled = true;
 
 var isInitiator;
 
+//setup my video here.
+grabWebCamVideo();
+
 /****************************************************************************
 * Signaling server
 ****************************************************************************/
@@ -55,15 +64,15 @@ connection.start().then(function () {
         $('#connectionStatus').text('You created Room ' + roomId + '. Waiting for participants...');
         myRoomId = roomId;
         isInitiator = true;
-        grabWebCamVideo();
+        //grabWebCamVideo();
     });
 
     connection.on('joined', function (roomId) {
         console.log('This peer has joined room', roomId);
         myRoomId = roomId;
         isInitiator = false;
-        createPeerConnection(isInitiator, configuration);
-        grabWebCamVideo();
+        //createPeerConnection(isInitiator, configuration);
+        //grabWebCamVideo();
     });
 
     connection.on('error', function (message) {
@@ -192,10 +201,12 @@ function grabWebCamVideo() {
 function gotStream(stream) {
     console.log('getUserMedia video stream URL:', stream);
     window.stream = stream; // stream available to console
-    video.srcObject = stream;
-    video.onloadedmetadata = function () {
-        photo.width = photoContextW = video.videoWidth;
-        photo.height = photoContextH = video.videoHeight;
+    localStream = stream;
+    peerConn.addStream(localStream);
+    localVideo.srcObject = stream;
+    localVideo.onloadedmetadata = function () {
+        photo.width = photoContextW = localVideo.videoWidth;
+        photo.height = photoContextH = localVideo.videoHeight;
         console.log('gotStream with width and height:', photoContextW, photoContextH);
     };
     show(snapBtn);
@@ -205,7 +216,6 @@ function gotStream(stream) {
 * WebRTC peer connection and data channel
 ****************************************************************************/
 
-var peerConn;
 var dataChannel;
 
 function signalingMessageCallback(message) {
@@ -231,7 +241,7 @@ function signalingMessageCallback(message) {
 function createPeerConnection(isInitiator, config) {
     console.log('Creating Peer connection as initiator?', isInitiator, 'config:',
         config);
-    peerConn = new RTCPeerConnection(config);
+    //peerConn = new RTCPeerConnection(config);
 
     // send any ice candidates to the other peer
     peerConn.onicecandidate = function (event) {
@@ -246,6 +256,11 @@ function createPeerConnection(isInitiator, config) {
         } else {
             console.log('End of candidates.');
         }
+    };
+
+    peerConn.ontrack = function (event) {
+        console.log('icecandidate ontrack event:', event);
+        remoteVideo.srcObject = event.streams[0];
     };
 
     if (isInitiator) {
@@ -284,6 +299,7 @@ function onDataChannelCreated(channel) {
 
     channel.onclose = function () {
         console.log('Channel closed.');
+        $('#connectionStatus').text('Channel closed.');
         sendBtn.disabled = true;
         snapAndSendBtn.disabled = true;
     }
@@ -361,7 +377,7 @@ function receiveDataFirefoxFactory() {
 ****************************************************************************/
 
 function snapPhoto() {
-    photoContext.drawImage(video, 0, 0, photo.width, photo.height);
+    photoContext.drawImage(localVideo, 0, 0, photo.width, photo.height);
     show(photo, sendBtn);
 }
 
