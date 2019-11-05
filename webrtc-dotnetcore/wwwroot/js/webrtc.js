@@ -6,12 +6,12 @@ var connection = new signalR.HubConnectionBuilder().withUrl("/WebRTCHub").build(
 * Initial setup
 ****************************************************************************/
 
- const configuration = {
+let configuration = {
    'iceServers': [{
      'urls': 'stun:stun.l.google.com:19302'
    }]
  };
-const peerConn = new RTCPeerConnection(configuration);
+let peerConn = new RTCPeerConnection(configuration);
 
 const roomNameTxt = document.getElementById('roomNameTxt');
 const createRoomBtn = document.getElementById('createRoomBtn');
@@ -225,14 +225,15 @@ function createPeerConnection(isInitiator, config) {
     peerConn.onicecandidate = function (event) {
         console.log('icecandidate event:', event);
         if (event.candidate) {
-            sendMessage({
-                type: 'candidate',
-                label: event.candidate.sdpMLineIndex,
-                id: event.candidate.sdpMid,
-                candidate: event.candidate.candidate
-            });
+            //sendMessage({
+            //    type: 'candidate',
+            //    label: event.candidate.sdpMLineIndex,
+            //    id: event.candidate.sdpMid,
+            //    candidate: event.candidate.candidate
+            //});
         } else {
             console.log('End of candidates.');
+            sendMessage(peerConn.localDescription);
         }
     };
 
@@ -261,7 +262,7 @@ function onLocalSessionCreated(desc) {
     console.log('local session created:', desc);
     peerConn.setLocalDescription(desc, function () {
         console.log('sending local desc:', peerConn.localDescription);
-        sendMessage(peerConn.localDescription);
+        //sendMessage(peerConn.localDescription);
     }, logError);
 }
 
