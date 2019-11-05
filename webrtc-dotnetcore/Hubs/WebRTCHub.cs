@@ -46,7 +46,7 @@ namespace webrtc_dotnetcore.Hubs
             await Clients.Caller.SendAsync("joined", roomId);
             await Clients.Group(roomId).SendAsync("ready");
 
-            //remove the room from available room list.
+            //remove the room from room list.
             if (int.TryParse(roomId, out int id))
             {
                 roomManager.DeleteRoom(id);
@@ -69,7 +69,7 @@ namespace webrtc_dotnetcore.Hubs
             {
                 Debug.WriteLine(ex.Message);
             }
-            await Clients.GroupExcept(roomId, Context.ConnectionId).SendAsync("message", message);
+            await Clients.OthersInGroup(roomId).SendAsync("message", message);
         }
 
         public async Task NotifyRoomInfoAsync(bool notifyOnlyCaller)

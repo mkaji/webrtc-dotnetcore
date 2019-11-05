@@ -11,3 +11,16 @@ canvas {
     max-width: 100%;
     width: 320px;
 }
+
+h4 {
+    margin: 1em 0;
+}
+
+h5 {
+    margin: 1em 0;
+}
+
+/*.connectionStatus {
+    border: 1px solid #d1d5da;
+    border-radius: 3px;
+}*/

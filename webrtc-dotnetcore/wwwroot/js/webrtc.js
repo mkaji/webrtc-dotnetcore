@@ -6,42 +6,31 @@ var connection = new signalR.HubConnectionBuilder().withUrl("/WebRTCHub").build(
 * Initial setup
 ****************************************************************************/
 
-// var configuration = {
-//   'iceServers': [{
-//     'urls': 'stun:stun.l.google.com:19302'
-//   }]
-// };
+ const configuration = {
+   'iceServers': [{
+     'urls': 'stun:stun.l.google.com:19302'
+   }]
+ };
+const peerConn = new RTCPeerConnection(configuration);
 
-var configuration = null;
-var peerConn = new RTCPeerConnection(configuration);
-var myRoomId;
+const roomNameTxt = document.getElementById('roomNameTxt');
+const createRoomBtn = document.getElementById('createRoomBtn');
+const roomTable = document.getElementById('roomTable');
+const connectionStatusMessage = document.getElementById('connectionStatusMessage');
+const fileInput = document.getElementById('fileInput');
+const sendFileBtn = document.getElementById('sendFileBtn');
+const fileTable = document.getElementById('fileTable');
+sendFileBtn.disabled = true;
 
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
-var localStream;
-var remoteStream;
 
-//var video = document.querySelector('video');
-var photo = document.getElementById('photo');
-var photoContext = photo.getContext('2d');
-var trail = document.getElementById('trail');
-var snapBtn = document.getElementById('snap');
-var sendBtn = document.getElementById('send');
-var snapAndSendBtn = document.getElementById('snapAndSend');
-
-var photoContextW;
-var photoContextH;
-
-// Attach event handlers
-snapBtn.addEventListener('click', snapPhoto);
-sendBtn.addEventListener('click', sendPhoto);
-snapAndSendBtn.addEventListener('click', snapAndSend);
-
-// Disable send buttons by default.
-sendBtn.disabled = true;
-snapAndSendBtn.disabled = true;
-
-var isInitiator;
+let myRoomId;
+let localStream;
+let remoteStream;
+let fileReader;
+let isInitiator = false;
+let hasRoomJoined = false;
 
 //setup my video here.
 grabWebCamVideo();
@@ -54,25 +43,24 @@ grabWebCamVideo();
 connection.start().then(function () {
 
     connection.on('updateRoom', function (data) {
-        updateRoom(data);
+        var obj = JSON.parse(data);
+        $(roomTable).DataTable().clear().rows.add(obj).draw();
     });
 
     connection.on('created', function (roomId) {
         console.log('Created room', roomId);
-        $('#name').prop("disabled", true);
-        $('#createBtn').prop("disabled", true);
-        $('#connectionStatus').text('You created Room ' + roomId + '. Waiting for participants...');
+        roomNameTxt.disabled = true;
+        createRoomBtn.disabled = true;
+        hasRoomJoined = true;
+        connectionStatusMessage.innerText = 'You created Room ' + roomId + '. Waiting for participants...';
         myRoomId = roomId;
         isInitiator = true;
-        //grabWebCamVideo();
     });
 
     connection.on('joined', function (roomId) {
         console.log('This peer has joined room', roomId);
         myRoomId = roomId;
         isInitiator = false;
-        //createPeerConnection(isInitiator, configuration);
-        //grabWebCamVideo();
     });
 
     connection.on('error', function (message) {
@@ -81,9 +69,10 @@ connection.start().then(function () {
 
     connection.on('ready', function () {
         console.log('Socket is ready');
-        $('#name').prop("disabled", true);
-        $('#createBtn').prop("disabled", true);
-        $('#connectionStatus').text('Connecting...');
+        roomNameTxt.disabled = true;
+        createRoomBtn.disabled = true;
+        hasRoomJoined = true;
+        connectionStatusMessage.innerText = 'Connecting...';
         createPeerConnection(isInitiator, configuration);
     });
 
@@ -111,14 +100,10 @@ connection.start().then(function () {
     // Leaving rooms and disconnecting from peers.
     connection.on('disconnect', function (reason) {
         console.log(`Disconnected: ${reason}.`);
-        sendBtn.disabled = true;
-        snapAndSendBtn.disabled = true;
     });
 
     connection.on('bye', function (room) {
         console.log(`Peer leaving room ${room}.`);
-        sendBtn.disabled = true;
-        snapAndSendBtn.disabled = true;
         // If peer did not create the room, re-enter to be creator.
         if (!isInitiator) {
             window.location.reload();
@@ -150,37 +135,37 @@ function sendMessage(message) {
 * Room management
 ****************************************************************************/
 
-$('#createBtn').click(function () {
-    var name = $('#name').val();
+$(createRoomBtn).click(function () {
+    var name = roomNameTxt.value;
     connection.invoke("CreateRoom", name).catch(function (err) {
         return console.error(err.toString());
     });
 });
 
-
-$('#testButton').click(function () {
-    var dataNum = parseInt($('#dataNum').val());
-    connection.invoke("ReloadRoom", dataNum).catch(function (err) {
-        return console.error(err.toString());
-    });
-});
-
 $('#roomTable tbody').on('click', 'button', function () {
-    if ($('#connectionStatus').text()) {
+    if (hasRoomJoined) {
         alert('You already joined the room. Please use a new tab or window.');
-    }
-    else {
-        var data = $('#roomTable').DataTable().row($(this).parents('tr')).data();
+    } else {
+        var data = $(roomTable).DataTable().row($(this).parents('tr')).data();
         connection.invoke("Join", data.RoomId).catch(function (err) {
             return console.error(err.toString());
         });
     }
 });
 
-function updateRoom(data) {
-    var obj = JSON.parse(data);
-    $('#roomTable').DataTable().clear().rows.add(obj).draw();
-}
+$(fileInput).change(function () {
+    let file = fileInput.files[0];
+    if (file) {
+        sendFileBtn.disabled = false;
+    } else {
+        sendFileBtn.disabled = true;
+    }
+});
+
+$(sendFileBtn).click(function () {
+    sendFileBtn.disabled = true;
+    sendFile();
+});
 
 /****************************************************************************
 * User media (webcam)
@@ -189,7 +174,7 @@ function updateRoom(data) {
 function grabWebCamVideo() {
     console.log('Getting user media (video) ...');
     navigator.mediaDevices.getUserMedia({
-        audio: false,
+        audio: true,
         video: true
     })
         .then(gotStream)
@@ -204,12 +189,6 @@ function gotStream(stream) {
     localStream = stream;
     peerConn.addStream(localStream);
     localVideo.srcObject = stream;
-    localVideo.onloadedmetadata = function () {
-        photo.width = photoContextW = localVideo.videoWidth;
-        photo.height = photoContextH = localVideo.videoHeight;
-        console.log('gotStream with width and height:', photoContextW, photoContextH);
-    };
-    show(snapBtn);
 }
 
 /****************************************************************************
@@ -241,7 +220,6 @@ function signalingMessageCallback(message) {
 function createPeerConnection(isInitiator, config) {
     console.log('Creating Peer connection as initiator?', isInitiator, 'config:',
         config);
-    //peerConn = new RTCPeerConnection(config);
 
     // send any ice candidates to the other peer
     peerConn.onicecandidate = function (event) {
@@ -265,7 +243,7 @@ function createPeerConnection(isInitiator, config) {
 
     if (isInitiator) {
         console.log('Creating Data Channel');
-        dataChannel = peerConn.createDataChannel('photos');
+        dataChannel = peerConn.createDataChannel('sendDataChannel');
         onDataChannelCreated(dataChannel);
 
         console.log('Creating an offer');
@@ -291,150 +269,87 @@ function onDataChannelCreated(channel) {
     console.log('onDataChannelCreated:', channel);
 
     channel.onopen = function () {
-        console.log('CHANNEL opened!!!');
-        $('#connectionStatus').text('Channel opened!!');
-        sendBtn.disabled = false;
-        snapAndSendBtn.disabled = false;
+        console.log('Channel opened!!!');
+        connectionStatusMessage.innerText = 'Channel opened!!';
     };
 
     channel.onclose = function () {
         console.log('Channel closed.');
-        $('#connectionStatus').text('Channel closed.');
-        sendBtn.disabled = true;
-        snapAndSendBtn.disabled = true;
+        connectionStatusMessage.innerText = 'Channel closed.';
     }
 
-    channel.onmessage = (adapter.browserDetails.browser === 'firefox') ?
-        receiveDataFirefoxFactory() : receiveDataChromeFactory();
+    channel.onmessage = onReceiveMessageCallback();
 }
 
-function receiveDataChromeFactory() {
-    var buf, count;
+function onReceiveMessageCallback() {
+    let count;
+    let fileSize, fileName;
+    let receiveBuffer = [];
 
     return function onmessage(event) {
         if (typeof event.data === 'string') {
-            buf = window.buf = new Uint8ClampedArray(parseInt(event.data));
+            const fileMetaInfo = event.data.split(',');
+            fileSize = parseInt(fileMetaInfo[0]);
+            fileName = fileMetaInfo[1];
             count = 0;
-            console.log('Expecting a total of ' + buf.byteLength + ' bytes');
             return;
         }
 
-        var data = new Uint8ClampedArray(event.data);
-        buf.set(data, count);
+        receiveBuffer.push(event.data);
+        count += event.data.byteLength;
 
-        count += data.byteLength;
-        console.log('count: ' + count);
+        if (fileSize === count) {
+            // all data chunks have been received
+            const received = new Blob(receiveBuffer);
+            receiveBuffer = [];
 
-        if (count === buf.byteLength) {
-            // we're done: all data chunks have been received
-            console.log('Done. Rendering photo.');
-            renderPhoto(buf);
+            $(fileTable).children('tbody').append('<tr><td style="border:1px dotted;"><a>test file</a></td></tr>');
+            const downloadAnchor = $(fileTable).find('a:last');
+            downloadAnchor.attr('href', URL.createObjectURL(received));
+            downloadAnchor.attr('download', fileName);
+            downloadAnchor.text(`${fileName} (${fileSize} bytes)`);
         }
     };
 }
-
-function receiveDataFirefoxFactory() {
-    var count, total, parts;
-
-    return function onmessage(event) {
-        if (typeof event.data === 'string') {
-            total = parseInt(event.data);
-            parts = [];
-            count = 0;
-            console.log('Expecting a total of ' + total + ' bytes');
-            return;
-        }
-
-        parts.push(event.data);
-        count += event.data.size;
-        console.log('Got ' + event.data.size + ' byte(s), ' + (total - count) +
-            ' to go.');
-
-        if (count === total) {
-            console.log('Assembling payload');
-            var buf = new Uint8ClampedArray(total);
-            var compose = function (i, pos) {
-                var reader = new FileReader();
-                reader.onload = function () {
-                    buf.set(new Uint8ClampedArray(this.result), pos);
-                    if (i + 1 === parts.length) {
-                        console.log('Done. Rendering photo.');
-                        renderPhoto(buf);
-                    } else {
-                        compose(i + 1, pos + this.result.byteLength);
-                    }
-                };
-                reader.readAsArrayBuffer(parts[i]);
-            };
-            compose(0, 0);
-        }
-    };
-}
-
 
 /****************************************************************************
 * Aux functions, mostly UI-related
 ****************************************************************************/
 
-function snapPhoto() {
-    photoContext.drawImage(localVideo, 0, 0, photo.width, photo.height);
-    show(photo, sendBtn);
-}
+function sendFile() {
+    const file = fileInput.files[0];
+    console.log(`File is ${[file.name, file.size, file.type, file.lastModified].join(' ')}`);
 
-function sendPhoto() {
-    // Split data channel message in chunks of this byte length.
-    var CHUNK_LEN = 64000;
-    //var CHUNK_LEN = 64000000;
-    console.log('width and height ', photoContextW, photoContextH);
-    var img = photoContext.getImageData(0, 0, photoContextW, photoContextH),
-        len = img.data.byteLength,
-        n = len / CHUNK_LEN | 0;
-
-    console.log('Sending a total of ' + len + ' byte(s)');
-
-    if (!dataChannel) {
-        logError('Connection has not been initiated. ' +
-            'Get two peers in the same room first');
-        return;
-    } else if (dataChannel.readyState === 'closed') {
-        logError('Connection was lost. Peer closed the connection.');
+    if (file.size === 0) {
+        alert('File is empty, please select a non-empty file.');
         return;
     }
 
-    dataChannel.send(len);
+    //send file size and file name as comma separated value.
+    dataChannel.send(file.size + ',' + file.name);
 
-    // split the photo and send in chunks of about 64KB
-    for (var i = 0; i < n; i++) {
-        var start = i * CHUNK_LEN,
-            end = (i + 1) * CHUNK_LEN;
-        console.log(start + ' - ' + (end - 1));
-        dataChannel.send(img.data.subarray(start, end));
-    }
-
-    // send the reminder, if any
-    if (len % CHUNK_LEN) {
-        console.log('last ' + len % CHUNK_LEN + ' byte(s)');
-        dataChannel.send(img.data.subarray(n * CHUNK_LEN));
-    }
-}
-
-function snapAndSend() {
-    snapPhoto();
-    sendPhoto();
-}
-
-function renderPhoto(data) {
-    var canvas = document.createElement('canvas');
-    canvas.width = photoContextW;
-    canvas.height = photoContextH;
-    canvas.classList.add('incomingPhoto');
-    // trail is the element holding the incoming images
-    trail.insertBefore(canvas, trail.firstChild);
-
-    var context = canvas.getContext('2d');
-    var img = context.createImageData(photoContextW, photoContextH);
-    img.data.set(data);
-    context.putImageData(img, 0, 0);
+    const chunkSize = 16384;
+    fileReader = new FileReader();
+    let offset = 0;
+    fileReader.addEventListener('error', error => console.error('Error reading file:', error));
+    fileReader.addEventListener('abort', event => console.log('File reading aborted:', event));
+    fileReader.addEventListener('load', e => {
+        console.log('FileRead.onload ', e);
+        dataChannel.send(e.target.result);
+        offset += e.target.result.byteLength;
+        if (offset < file.size) {
+            readSlice(offset);
+        } else {
+            alert(`${file.name} has been sent successfully.`);
+            sendFileBtn.disabled = false;
+        }
+    });
+    const readSlice = o => {
+        console.log('readSlice ', o);
+        const slice = file.slice(offset, o + chunkSize);
+        fileReader.readAsArrayBuffer(slice);
+    };
+    readSlice(0);
 }
 
 function show() {

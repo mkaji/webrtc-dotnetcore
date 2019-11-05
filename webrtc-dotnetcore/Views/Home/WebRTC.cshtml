@@ -7,23 +7,18 @@
     <link rel="stylesheet" href="~/css/webrtc.css" type="text/css" />
 }
 
-<input id="dataNum" value="1" />
-<button id="testButton">test</button>
-
-<h3>Create your room</h3>
-<div style="margin: 1em 0">
-    <label for="name">Name:</label>
-    <input type="text" id="name" />
-    <button id="createBtn">Create</button>
+<div style="margin: 2em 0 1em 0;">
+    <label for="name">Room Name:</label>
+    <input type="text" id="roomNameTxt" />
+    <button id="createRoomBtn">Create</button>
 </div>
 
-<h3>Available room list</h3>
-<div style="margin: 1em 0">
-    <table id="roomTable" class="display" style="width:100%">
+<div>
+    <table id="roomTable" class="display" style="width:100%; margin: 1em 0;">
         <thead>
             <tr>
                 <th>Room ID</th>
-                <th>Owner</th>
+                <th>Name</th>
                 <th></th>
             </tr>
         </thead>
@@ -32,25 +27,40 @@
     </table>
 </div>
 
-<div id="workArea" style="margin: 1em 0">
-    <p id="connectionStatus"></p>
-
-    <div id="videoCanvas">
-        <video id="localVideo" autoplay playsinline></video>
-        <video id="remoteVideo" autoplay playsinline></video>
-        @*<video id="camera" autoplay playsinline></video>*@
-        <canvas id="photo"></canvas>
+<div id="room" style="border-top:1px dotted; margin: 1em 0;">
+</div>
+<div>
+    <div class="connectionStatus">
+        <p id="connectionStatusMessage">*You can creat your own room or join the other room.</p>
     </div>
+    <h5>Video chat</h5>
+    <div id="workArea" style="margin: 1em 0">
 
-    <div id="buttons">
-        <button id="snap">Snap</button><span> then </span><button id="send">Send</button>
-        <span> or </span>
-        <button id="snapAndSend">Snap &amp; Send</button>
-    </div>
+        <div id="videoCanvas">
+            <video id="localVideo" autoplay playsinline></video>
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
 
-    <div id="incoming">
-        <h2>Incoming photos</h2>
-        <div id="trail"></div>
+        <h5>File sharing</h5>
+        <div id="fileShare">
+            <input type="file" id="fileInput">
+            <button id="sendFileBtn" style="display:block; margin-top: 10px;">Send</button>
+        </div>
+        <table id="fileTable" class"files" style="border:1px solid; margin: 1em 0; width: 500px;">
+            <thead>
+                <tr>
+                    <th style="background: #e8eaed; border:1px solid;">Received Files</th>
+                </tr>
+            </thead>
+            <tbody>
+                @*<tr>
+                        <td style="border:1px dotted;">test file</td>
+                    </tr>*@
+            </tbody>
+        </table>
+        <div id="files">
+
+        </div>
     </div>
 </div>
 
