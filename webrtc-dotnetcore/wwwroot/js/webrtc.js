@@ -6,12 +6,12 @@ var connection = new signalR.HubConnectionBuilder().withUrl("/WebRTCHub").build(
 * Initial setup
 ****************************************************************************/
 
-let configuration = {
+const configuration = {
    'iceServers': [{
      'urls': 'stun:stun.l.google.com:19302'
    }]
  };
-let peerConn = new RTCPeerConnection(configuration);
+const peerConn = new RTCPeerConnection(configuration);
 
 const roomNameTxt = document.getElementById('roomNameTxt');
 const createRoomBtn = document.getElementById('createRoomBtn');
@@ -20,9 +20,6 @@ const connectionStatusMessage = document.getElementById('connectionStatusMessage
 const fileInput = document.getElementById('fileInput');
 const sendFileBtn = document.getElementById('sendFileBtn');
 const fileTable = document.getElementById('fileTable');
-fileInput.disabled = true;
-sendFileBtn.disabled = true;
-
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
 
@@ -32,6 +29,22 @@ let remoteStream;
 let fileReader;
 let isInitiator = false;
 let hasRoomJoined = false;
+
+fileInput.disabled = true;
+sendFileBtn.disabled = true;
+
+$(roomTable).DataTable({
+    columns: [
+        { data: 'RoomId', "width": "30%" },
+        { data: 'Name', "width": "50%" },
+        { data: 'Button', "width": "15%" }
+    ],
+    "lengthChange": false,
+    "searching": false,
+    "language": {
+        "emptyTable": "No room available"
+    }
+});
 
 //setup my video here.
 grabWebCamVideo();

@@ -1,5 +1,5 @@
 ﻿@{
-    ViewData["Title"] = "WebRTC";
+    ViewData["Title"] = "WebRTC with ASP.NET Core";
 }
 
 @section StyleSheets{
@@ -27,7 +27,7 @@
     </table>
 </div>
 
-<div class="roomBorder"></div>
+<div class="boderLine"></div>
 
 <div>
     <div class="connectionStatus">
@@ -60,20 +60,4 @@
     <script type="text/javascript" src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
     <script type="text/javascript" src="~/js/webrtc.js"></script>
-    <script>
-        $(document).ready(function () {
-            $('#roomTable').DataTable({
-                columns: [
-                    { data: 'RoomId', "width": "30%" },
-                    { data: 'Name', "width": "50%" },
-                    { data: 'Button', "width": "15%" }
-                ],
-                "lengthChange": false,
-                "searching": false,
-                "language": {
-                    "emptyTable": "No room available"
-                }
-            });
-        });
-    </script>
 }

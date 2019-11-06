@@ -66,14 +66,6 @@ namespace webrtc_dotnetcore.Hubs
 
         public async Task SendMessage(string roomId, object message)
         {
-            try
-            {
-                Debug.WriteLine("message:" + message);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.Message);
-            }
             await Clients.OthersInGroup(roomId).SendAsync("message", message);
         }
 
@@ -106,6 +98,9 @@ namespace webrtc_dotnetcore.Hubs
     public class RoomManager
     {
         private int nextRoomId;
+        /// <summary>
+        /// Room List (key:RoomId)
+        /// </summary>
         private ConcurrentDictionary<int, RoomInfo> rooms;
 
         public RoomManager()
