@@ -20,6 +20,7 @@ const connectionStatusMessage = document.getElementById('connectionStatusMessage
 const fileInput = document.getElementById('fileInput');
 const sendFileBtn = document.getElementById('sendFileBtn');
 const fileTable = document.getElementById('fileTable');
+fileInput.disabled = true;
 sendFileBtn.disabled = true;
 
 const localVideo = document.getElementById('localVideo');
@@ -76,45 +77,29 @@ connection.start().then(function () {
         createPeerConnection(isInitiator, configuration);
     });
 
-    connection.on('log', function (array) {
-        console.log.apply(console, array);
-    });
-
     connection.on('message', function (message) {
         console.log('Client received message:', message);
         signalingMessageCallback(message);
     });
 
-    //Get room list.
-    connection.invoke("GetRoomInfo").catch(function (err) {
-        return console.error(err.toString());
-    });
-
-    if (location.hostname.match(/localhost|127\.0\.0/)) {
-        //socket.emit('ipaddr');
-        //connection.invoke("ipaddr").catch(function (err) {
-        //    return console.error(err.toString());
-        //});
-    }
-
-    // Leaving rooms and disconnecting from peers.
-    connection.on('disconnect', function (reason) {
-        console.log(`Disconnected: ${reason}.`);
-    });
-
-    connection.on('bye', function (room) {
-        console.log(`Peer leaving room ${room}.`);
+    connection.on('bye', function () {
+        console.log(`Peer leaving room.`);
         // If peer did not create the room, re-enter to be creator.
-        if (!isInitiator) {
-            window.location.reload();
-        }
+        connectionStatusMessage.innerText = `Other peer left room ${myRoomId}.`;
     });
 
     window.addEventListener('unload', function () {
-        console.log(`Unloading window. Notifying peers in ${room}.`);
-        connection.invoke("bye", room).catch(function (err) {
-            return console.error(err.toString());
-        });
+        if (hasRoomJoined) {
+            console.log(`Unloading window. Notifying peers in ${myRoomId}.`);
+            connection.invoke("LeaveRoom", myRoomId).catch(function (err) {
+                return console.error(err.toString());
+            });
+        }
+    });
+
+    //Get room list.
+    connection.invoke("GetRoomInfo").catch(function (err) {
+        return console.error(err.toString());
     });
 
 }).catch(function (err) {
@@ -185,7 +170,6 @@ function grabWebCamVideo() {
 
 function gotStream(stream) {
     console.log('getUserMedia video stream URL:', stream);
-    window.stream = stream; // stream available to console
     localStream = stream;
     peerConn.addStream(localStream);
     localVideo.srcObject = stream;
@@ -225,6 +209,7 @@ function createPeerConnection(isInitiator, config) {
     peerConn.onicecandidate = function (event) {
         console.log('icecandidate event:', event);
         if (event.candidate) {
+            // Trickle ICE
             //sendMessage({
             //    type: 'candidate',
             //    label: event.candidate.sdpMLineIndex,
@@ -233,6 +218,7 @@ function createPeerConnection(isInitiator, config) {
             //});
         } else {
             console.log('End of candidates.');
+            // Vanilla ICE
             sendMessage(peerConn.localDescription);
         }
     };
@@ -261,7 +247,8 @@ function createPeerConnection(isInitiator, config) {
 function onLocalSessionCreated(desc) {
     console.log('local session created:', desc);
     peerConn.setLocalDescription(desc, function () {
-        console.log('sending local desc:', peerConn.localDescription);
+        // Trickle ICE
+        //console.log('sending local desc:', peerConn.localDescription);
         //sendMessage(peerConn.localDescription);
     }, logError);
 }
@@ -272,6 +259,7 @@ function onDataChannelCreated(channel) {
     channel.onopen = function () {
         console.log('Channel opened!!!');
         connectionStatusMessage.innerText = 'Channel opened!!';
+        fileInput.disabled = false;
     };
 
     channel.onclose = function () {
@@ -304,7 +292,7 @@ function onReceiveMessageCallback() {
             const received = new Blob(receiveBuffer);
             receiveBuffer = [];
 
-            $(fileTable).children('tbody').append('<tr><td style="border:1px dotted;"><a>test file</a></td></tr>');
+            $(fileTable).children('tbody').append('<tr><td><a></a></td></tr>');
             const downloadAnchor = $(fileTable).find('a:last');
             downloadAnchor.attr('href', URL.createObjectURL(received));
             downloadAnchor.attr('download', fileName);
@@ -312,10 +300,6 @@ function onReceiveMessageCallback() {
         }
     };
 }
-
-/****************************************************************************
-* Aux functions, mostly UI-related
-****************************************************************************/
 
 function sendFile() {
     const file = fileInput.files[0];
@@ -353,17 +337,9 @@ function sendFile() {
     readSlice(0);
 }
 
-function show() {
-    Array.prototype.forEach.call(arguments, function (elem) {
-        elem.style.display = null;
-    });
-}
-
-function hide() {
-    Array.prototype.forEach.call(arguments, function (elem) {
-        elem.style.display = 'none';
-    });
-}
+/****************************************************************************
+* Auxiliary functions
+****************************************************************************/
 
 function logError(err) {
     if (!err) return;

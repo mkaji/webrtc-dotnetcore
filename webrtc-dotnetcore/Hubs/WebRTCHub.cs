@@ -54,6 +54,11 @@ namespace webrtc_dotnetcore.Hubs
             }
         }
 
+        public async Task LeaveRoom(string roomId)
+        {
+            await Clients.Group(roomId).SendAsync("bye");
+        }
+
         public async Task GetRoomInfo()
         {
             await NotifyRoomInfoAsync(true);
@@ -80,7 +85,7 @@ namespace webrtc_dotnetcore.Hubs
                        {
                            RoomId = room.RoomId,
                            Name = room.Name,
-                           Button = "<button style=\"width: 100%\">Join!</button>"
+                           Button = "<button class=\"joinButton\">Join!</button>"
                        };
             var data = JsonConvert.SerializeObject(list);
 

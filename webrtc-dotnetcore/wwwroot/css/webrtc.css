@@ -7,11 +7,6 @@ video {
     width: 320px;
 }
 
-canvas {
-    max-width: 100%;
-    width: 320px;
-}
-
 h4 {
     margin: 1em 0;
 }
@@ -20,7 +15,35 @@ h5 {
     margin: 1em 0;
 }
 
-/*.connectionStatus {
-    border: 1px solid #d1d5da;
-    border-radius: 3px;
-}*/
+.roomCreate {
+    margin: 2em 0 1em 0;
+}
+
+.joinButton {
+    width: 100%;
+}
+
+.roomBorder {
+    border-top: 1px dotted;
+    margin: 1em 0;
+}
+
+.sendFileBtn {
+    display: block;
+    margin-top: 10px;
+}
+
+.fileTable {
+    border: 1px solid;
+    margin: 1em 0;
+    width: 500px;
+}
+
+    .fileTable th {
+        background: #e8eaed;
+        border: 1px solid;
+    }
+
+    .fileTable td {
+        border: 1px dotted;
+    }

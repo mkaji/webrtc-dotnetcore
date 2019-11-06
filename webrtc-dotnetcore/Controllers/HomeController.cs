@@ -20,24 +20,6 @@ namespace webrtc_dotnetcore.Controllers
             return View();
         }
 
-        public class RoomDataModel
-        {
-            public string RoomID { get; set; }
-            public string Owner { get; set; }
-        }
-
-        public JsonResult GetRoomData()
-        {
-            var hoge2 = new List<RoomDataModel>();
-            hoge2.Add(new RoomDataModel
-            {
-                RoomID = "1",
-                Owner = "owner"
-            });
-
-            return new JsonResult(new { data = hoge2 });
-        }
-
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
